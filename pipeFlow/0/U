@@ -1,0 +1,80 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  9
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       volVectorField;
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+//  [Mass Length Time temp mol Ampere Intensity]
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField  #codeStream
+    {
+        code
+        #{
+            const IOdictionary& d = static_cast<const IOdictionary&>(dict);
+            const fvMesh& mesh = refCast<const fvMesh>(d.db());
+            vectorField fld(mesh.nCells(), Foam::Vector<double>(0.,0.,0.));
+
+            scalar shr_rt = 1000.0; // shear rate [1/s];
+            scalar H = 0.1; // height of domain [cm]
+
+            forAll(mesh.C(),cellI)
+            {
+            	vector CC = mesh.C()[cellI]; // cell-center data
+                const scalar y = CC.y();
+                
+                const scalar parab =  shr_rt*H/4.0 - shr_rt/H*pow(y-H/2.0,2);
+                fld[cellI] = vector(parab,0,0); //set the x-comp of velocity
+            }
+
+            
+            writeEntry(os, "", fld);
+            
+        #};
+
+        //- Optional:
+        codeInclude
+        #{
+            #include "fvCFD.H"
+        #};
+
+        //- Optional:
+        codeOptions
+        #{
+            -I$(LIB_SRC)/finiteVolume/lnInclude  \
+            -I$(LIB_SRC)/meshTools/lnInclude \
+        #};
+    };
+
+boundaryField
+{
+    inlet
+    {
+        type            zeroGradient;
+    }
+
+    outlet
+    {
+        type            zeroGradient;
+    }
+
+    fixedWalls
+    {
+        type            noSlip;
+    }
+
+    frontAndBack
+    {
+        type            empty;
+    }
+}
+
+// ************************************************************************* //
